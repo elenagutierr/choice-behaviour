@@ -1,2 +1,2 @@
 # multiattr-choice
-matlab code to analyse multiattribute choice behaviour
+matlab code to analyse multi-attribute choice behaviour
