@@ -20,13 +20,13 @@ m_attr = readstruct([my_dir '\data\m_attr.xml'], "FileType", "xml");
 choice_attributes = {'magnitude', 'probability'};   
 subjects   = {'A', 'T'};
 stim_sets  = unique(m_attr.stimulus_set);
-session_id = unique([m_attr.session' m_attr.subject'], 'rows', 'stable');
+session_id = unique([m_attr.session' m_attr.subject' m_attr.stimulus_set'], 'rows', 'stable');
 
 % subset the trials of interest here: 
 choice_trials = 'choice_made';  
 
 % colours
-stim_colours = [255, 69, 0;255, 140, 0]./255;
+stim_colours = [51, 102, 0;153, 76, 0]./255;
 attr_colours = [0, 100, 0;153, 204 47]./255;
 
 %% prospect theory modelling
@@ -71,64 +71,159 @@ min_bound = [0, 0, 0, 0, 0, 0, -Inf, -Inf, -Inf];
 max_bound = [1, 1, 1, 1, Inf, 1, Inf, Inf, Inf];
 options   = optimoptions(@fmincon, 'Display', 'off');
 
-% format data necessary (see fit_all_possible_models.m for details)
+% format data necessary (see fit_all_possible_models.m for details) and
+% exclude sessions that do not meet minimum trial number requirement
 all_data_to_fit = [m_attr.left_mag', m_attr.left_prob', m_attr.right_mag', m_attr.right_prob',...
                     m_attr.chose_left', m_attr.rewarded_trial', m_attr.session', m_attr.subject'];
-all_data_to_fit = all_data_to_fit(m_attr.(choice_trials)==1);   % subset trials of interest
+all_data_to_fit = all_data_to_fit(m_attr.(choice_trials)==1, :);   % subset trials of interest
+sessions_to_fit = [];
+for i = 1:length(session_id)
+    n_trials = sum(all_data_to_fit(:,7)==session_id(i,1) & all_data_to_fit(:,8)==session_id(i,2));
+    rew = sum(isnan(all_data_to_fit(all_data_to_fit(:,7)==session_id(i,1) & all_data_to_fit(:,8)==session_id(i,2), 6)));
+    if n_trials >= min_trial_n && rew==0
+        sessions_to_fit = [sessions_to_fit; session_id(i, :)];
+    end
+end
 
 % 1. test best-fitting model session-by-session
-best_models_i      = nan(length(session_id), save_best_n);
-best_models_params = nan(save_best_n, tot_params, length(session_id));
-best_models_bic    = nan(length(session_id), save_best_n);
+best_models_i      = nan(length(sessions_to_fit), save_best_n);
+best_models_params = nan(save_best_n, tot_params, length(sessions_to_fit));
+best_models_bic    = nan(length(sessions_to_fit), save_best_n);
 
-for i = 1:length(session_id)
-    data_to_fit = all_data_to_fit(all_data_to_fit(:,7)==session_id(i,1) & all_data_to_fit(:,8)==session_id(i,2), :);
-    n_trials = length(data_to_fit);
-
-    if n_trials < min_trial_n    % exclude the session if minimum trials aren't reached
-        continue,
-    end
+for i = 1:length(sessions_to_fit)
+    data_to_fit = all_data_to_fit(all_data_to_fit(:,7)==sessions_to_fit(i,1) & all_data_to_fit(:,8)==sessions_to_fit(i,2), :);
     
     all_param_fits = nan(num_models, tot_params);
     all_neg_NLL    = nan(num_models,1);
     
     for ind = 1:num_models      
+        % set min and max to be equal to the prior if that specific parameter is not tested
         min_param = prior;
-        min_param(logical(models(ind, 1:tot_params))) = min_bound(logical(models(ind, 1:tot_params))); 
         max_param = prior;
+        min_param(logical(models(ind, 1:tot_params))) = min_bound(logical(models(ind, 1:tot_params))); 
         max_param(logical(models(ind, 1:tot_params))) = max_bound(logical(models(ind, 1:tot_params)));
 
         [all_param_fits(ind,:), all_neg_NLL(ind)]=fmincon(@(params)fit_all_possible_models(params,data_to_fit), prior, [], [], [], [], min_param, max_param, [], options); 
     end
       
     % save results from best fitting models
-    BIC = log(n_trials)*(num_params)+2*neg_NLL;
-    BIC(:,2) = (1:512)';
+    BIC = log(n_trials)*(num_params)+2*neg_NLL;     % compute BIC
     sort_BIC = sortrows([BIC (1:num_models)'],1);
     best_ind = sort_BIC(1:save_best_n,2);
     best_models_i(i,:)   = best_ind;
     best_models_bic(i,:) = BIC(best_ind,1);
     best_models_params(:,:,i) = param_fits(best_ind,:);
-    disp([i ' of ' length(session_id)])
+    disp([i ' of ' num2str(length(sessions_to_fit)) ' sessions done'])
 end
 
 % 2. run full model session-by-session
-param_fits = nan(length(sessionIDs), tot_params); % parameter fits
-neg_nll    = nan(length(sessionIDs),1);           % negative log-likelihood (badness of fit)
-parfor i = 1:length(sessionIDs)
+param_fits = nan(length(sessions_to_fit), tot_params); % parameter fits
+neg_nll    = nan(length(sessions_to_fit),1);           % negative log-likelihood (badness of fit)
+parfor i = 1:length(sessions_to_fit)
     
-    data_to_fit = all_data_to_fit(all_data_to_fit(:,7)==session_id(i,1) & all_data_to_fit(:,8)==session_id(i,2), :);
+    data_to_fit = all_data_to_fit(all_data_to_fit(:,7)==sessions_to_fit(i,1) & all_data_to_fit(:,8)==sessions_to_fit(i,2), :);
 
-    if length(data_to_fit) < min_trial_n    % exclude the session if minimum trials aren't reached
-        continue,
-    end
-
+    % set min and max to be equal to the prior if that specific parameter is not tested
     min_param = prior;
     max_param = prior;
-    min_param(logical(models(end,1:tot_params))) = min_bound(logical(models(end,1:tot_params))); % set min and max to be equal to the prior if that specific parameter is not tested
+    min_param(logical(models(end,1:tot_params))) = min_bound(logical(models(end,1:tot_params))); 
     max_param(logical(models(end,1:tot_params))) = max_bound(logical(models(end,1:tot_params)));
 
 
     [param_fits(i,:), neg_nll(i)]=fmincon(@(params)fit_all_possible_models(params, data_to_fit), prior, [], [], [], [], min_param, max_param, [], options); 
-    disp([i ' of ' length(session_id)])
+    disp(['Session ' num2str(i) ' of ' num2str(length(sessions_to_fit)) ' done'])
 end
+
+% plot parameters across sessions
+% we'd like to format this in chronological manner while also highlighting the different stimulus sets
+
+% set plotting constants
+params_to_plot = 1:5;
+plot_params.Color = stim_colours;
+plot_params.MarkerSize = 12;
+plot_params.Legend = {'Stimulus set 1', 'Stimulus set 2'};
+
+figure; set(gcf,'color','w');
+plots = [1:length(params_to_plot); length(params_to_plot)+1:length(params_to_plot)*2];
+m = length(subjects); n = length(params_to_plot);
+
+min_p=[0,0,0,0,0,0,-1,-1,-1];   % set limits
+max_p=[1,1,1,1,20,1,1,1,1];
+
+for i = 1:length(params_to_plot)
+    for subj = 1:length(subjects)
+        subj_data = param_fits(sessions_to_fit(:, 2)==subj, params_to_plot(i));
+        subj_sessions = sessions_to_fit(sessions_to_fit(:, 2)==subj, :);
+        x = 1:length(subj_data);
+
+        subplot(m, n, plots(subj, i)) 
+        scatter(x, subj_data, plot_params.MarkerSize, 'k', 'filled'); 
+        
+        max_sessions = length(x);
+        xlabel('sessions');
+        ylabel(['\bf' param_names(params_to_plot(i))]); 
+        title(['\rm' param_out(params_to_plot(i))])
+        xlim([1 max_sessions]);
+        xticks([1 ceil(max_sessions/2) max_sessions]); 
+        ylim([min_p(params_to_plot(i)) max_p(params_to_plot(i))])
+
+        % change the background colour to reflect the stimulus set
+        stims = unique(subj_sessions(:, 3));
+        background = gobjects(length(stim_sets), 1); % preallocate
+        for stim = 1:length(stims)
+            stim_col = subj_sessions(:, 3)==stim;
+
+            % find transition points (start and end of 1's)
+            d = diff([0 stim_col' 0]); % pad to catch edges
+            starts = find(d == 1);
+            ends   = find(d == -1) - 1;
+            
+            % shade the background
+            yl = ylim; % get y-axis limits
+            for col = 1:length(starts)
+                x_start = x(starts(col));
+                x_end = x(ends(col));
+                background(stim) = patch([x_start x_end x_end x_start], ...
+                                          [yl(1) yl(1) yl(2) yl(2)], ...
+                                          plot_params.Color(stims(stim), :), ...
+                                          'FaceAlpha', 0.4, 'EdgeColor', 'none');
+            end
+        end
+       
+    end
+end
+ha = axes('Position',[0 0 1 1],'Visible','off');
+legend(ha, background, plot_params.Legend, 'Location','northoutside', 'Orientation', 'horizontal');
+
+
+% 3. plot value distortions
+plot_params.Color = [repmat(96, 1, 3); repmat(224, 1, 3); 153, 0, 76]./255;
+plot_params.MarkerSize = 40;
+figure; set(gcf,'color','w');
+
+% compute subjective values
+obj = normalize_bound(1:10, 0.1, 0.999);
+subj_mag  = nan(length(subjects), length(obj));
+subj_prob = nan(length(subjects), length(obj));
+subj_ev   = nan(length(subjects), length(obj));
+for s = 1:length(subjects)         % subject loop
+    i = sessions_to_fit(:,2)==s;
+
+    int_coeff = mean(param_fits(i, 1));
+    w_ratio   = mean(param_fits(i, 2));
+    subj_mag(s, :)  = obj.^mean(param_fits(i, 3));
+    subj_prob(s, :) = exp(-(-log(obj)).^mean(param_fits(i, 4)));
+    subj_ev(s, :)   = (int_coeff.*mag.*prob) + (1-int_coeff).*(w_ratio.*mag + (1 - w_ratio).*prob);
+end
+
+subj_val = cat(3, subj_mag, subj_prob, subj_ev);
+obj_val  = [obj; obj; obj.*obj];
+for j = 1:size(subj_val, 3)
+    handle(j) = scatter(obj_val(j, :), mean(subj_val(:, :, j)), plot_params.MarkerSize, 'filled', 'MarkerEdgeColor', [0 0 0], 'MarkerFaceColor', plot_params.Color(j,:));
+    hold on  
+end
+axis square;
+plot([0, 1], [0, 1], '--k')
+xlabel('objective'); ylabel('subjective');
+xticks(0:0.2:1); yticks(0:0.2:1)
+legend(handle, {choice_attributes{1}, choice_attributes{2}, 'expected value'}, 'location','southeast')

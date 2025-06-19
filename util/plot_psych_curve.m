@@ -11,6 +11,7 @@
 
 function [stats_out, plot_out] = plot_psych_curve(x, y, chose_x, plot_params, plot_index)
 
+    
     % compute range of value differences
     value_difference = x - y;                               
     value_diff_ranks = unique(value_difference);
@@ -25,14 +26,17 @@ function [stats_out, plot_out] = plot_psych_curve(x, y, chose_x, plot_params, pl
     
     % logistic regression
     [b_value, ~, stats_out] = glmfit(value_diff_ranks, [n_chose_x n_rank], 'binomial', 'Link', 'logit');   
-     
+    
     if nargout > 1
+        if length(plot_index) < 2
+            plot_index(2) = 1;
+        end
         % plot
         yfit_value = glmval(b_value, value_diff_ranks, 'logit', 'size', n_rank);
         plot_out = plot(value_diff_ranks, n_chose_x./n_rank, '.', ...
                         value_diff_ranks, yfit_value./n_rank, '-', ...
                         'LineWidth', plot_params.LineWidth, ...
                         'MarkerSize', plot_params.MarkerSize, ...
-                        'Color', plot_params.Colours(plot_index, :));
+                        'Color', plot_params.Color(plot_index(1), :, plot_index(2)));
     end
 end
