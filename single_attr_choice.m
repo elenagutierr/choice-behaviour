@@ -4,7 +4,7 @@
 % 2. testing learning set across stimulus sets
 % 3. test performance as a function of choice value difference
 %
-% data (s_attr) is a struct with fields [1 x trials]. minimum data requirements are: 
+% data (m_attr) is a struct with fields [1 x trials]. minimum data requirements are: 
 % ID for subject, session, choice attribute, stimulus set, and trial (if multiple trial types), 
 % option values, option chosen (e.g. left/right, first/second), chose correct 
 
@@ -70,7 +70,8 @@ for subj = 1:length(subjects)
         end   
     end
     % label plot
-    xlabel('Left-Right Value Difference'); ylabel('P(Chose left)');
+    xl = xlabel('Left-Right Value Difference'); yl = ylabel('P(Chose left)');
+    tidy_labels(gca, yl, xl, 0.05)
     title(subjects{subj})
     xticks(-9:3:9); yticks(0:0.25:1);
     box off
@@ -259,7 +260,8 @@ figure(); set(gcf,'color','w');
 
 % bar plot
 b_plot = bar(mean_vals, 'FaceColor', [0.87 0.87 0.87], 'EdgeColor', 'k');
-xlabel('stimulus set'); ylabel('trials to criterion');
+xl = xlabel('stimulus set'); yl = ylabel('trials to criterion');
+tidy_labels(gca, yl, xl, 0.05)
 % ylim([0 180]); yticks(0:60:180)
 box off
 hold on
@@ -349,7 +351,8 @@ for subj = 1:length(subjects)
     title(subjects(subj))
     xlim([1 max_sessions]); ylim([25 100]);
     xticks([1 ceil(max_sessions/2) max_sessions]); yticks(25:25:100);
-    xlabel('session'); ylabel('accuracy (%)');
+    xl = xlabel('session'); yl = ylabel('accuracy (%)');
+    tidy_labels(gca, yl, xl, 0.05)
 
     % creat an inset plot for toto
     if subj==2
@@ -398,7 +401,8 @@ for subj = 1:length(subjects)
         y = ceil(max(n_trials(session_id(:, 1)==subj))./10).*10;
         xlim([1 max_sessions]); ylim([0 y]);
         xticks([1 ceil(max_sessions/2) max_sessions]); yticks([0 y/2 y]);
-        xlabel('session'); ylabel('number of trials');
+        xl = xlabel('session'); yl = ylabel('number of trials');
+        tidy_labels(gca, yl, xl, 0.05)
         legend(plot_params.Legend,'location','southeast')
     
         p_tr = p_tr+n;
@@ -436,8 +440,9 @@ for subj = 1:length(subjects)
         yline(50,'k--')
         ylim([0 100]); yticks(0:25:100)
         xticklabels(value_diff_ranks)
-        ylabel('accuracy (%)')
-        xlabel('ranked value difference')
+        yl = ylabel('accuracy (%)');
+        xl = xlabel('ranked value difference');
+        tidy_labels(gca, yl, xl, 0.05)
         title(subjects{subj})
         box off
 
