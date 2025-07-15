@@ -34,12 +34,16 @@ magnitude=data_to_fit(:,[1,3]).^params(3);
 probability=exp(-(-log(data_to_fit(:,[2,4]))).^params(4));
 
 % 3 types of side bias
-prev_choice=2*([0.5;data_to_fit(1:end-1,5)])-1; % code as +1/-1
-prev_win=2*([0.5;data_to_fit(1:end-1,6)])-1;    % code as +1/-1
-wsls=prev_choice.*prev_win;                     % win-stay-lose-shift
-prev_choice(logical([0;data_to_fit(2:end,7)~=data_to_fit(1:end-1,7)]))=0;   % remove effects from first trial of each session
-wsls(logical([0;data_to_fit(2:end,7)~=data_to_fit(1:end-1,7)]))=0;          % remove effects from first trial of each session
-sidebias=params(7)+params(8)*prev_choice+params(9)*wsls;
+if length(params) > 6
+    prev_choice=2*([0.5;data_to_fit(1:end-1,5)])-1; % code as +1/-1
+    prev_win=2*([0.5;data_to_fit(1:end-1,6)])-1;    % code as +1/-1
+    wsls=prev_choice.*prev_win;                     % win-stay-lose-shift
+    prev_choice(logical([0;data_to_fit(2:end,7)~=data_to_fit(1:end-1,7)]))=0;   % remove effects from first trial of each session
+    wsls(logical([0;data_to_fit(2:end,7)~=data_to_fit(1:end-1,7)]))=0;          % remove effects from first trial of each session
+    sidebias=params(7)+params(8)*prev_choice+params(9)*wsls;
+else
+    sidebias = 0;
+end
 
 % determine subjective values
 sub_val_left= (params(1) * magnitude(:,1).*probability(:,1)) + ((1-params(1)) * ((params(2).*magnitude(:,1))+((1-params(2)).*probability(:,1))));

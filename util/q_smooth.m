@@ -15,7 +15,7 @@ function out = q_smooth(inp, windowSize, slideWidth)
 
     slice = 1:auxStruct.windowSize;
     for i = 1:totBins
-        out(:, i) = nanmean(inp(:, slice), 2);
+        out(:, i) = mean(inp(:, slice), 2, 'omitnan');
 
         slice = (slice(1) + auxStruct.slideWidth):(slice(end) + auxStruct.slideWidth);
     end

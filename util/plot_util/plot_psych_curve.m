@@ -9,12 +9,20 @@
 %   psych_out = plot
 %   stats_out = stats for logistic regression
 
-function [stats_out, plot_out] = plot_psych_curve(x, y, chose_x, plot_params, plot_index)
+function [stats_out, plot_out] = plot_psych_curve(x, y, chose_x, plot_params, plot_index, ranks)
 
+
+    value_difference = x - y;
+
+    if nargin > 5   % were predefined ranks provided?
+        value_diff_ranks = ranks;
+        value_diff_step  = value_diff_ranks(2)-value_diff_ranks(1);
+        value_difference = round(value_difference/value_diff_step)*value_diff_step;
     
-    % compute range of value differences
-    value_difference = x - y;                               
-    value_diff_ranks = unique(value_difference);
+    else            % if not, compute range of value differences empirically
+        
+        value_diff_ranks = unique(value_difference);
+    end
 
     % compute choices for each value rank
     n_chose_x = zeros(length(value_diff_ranks),1);                        

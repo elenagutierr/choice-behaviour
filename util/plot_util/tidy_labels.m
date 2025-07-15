@@ -1,12 +1,16 @@
-function tidy_labels(ax, yl, xl, offset)
+function tidy_labels(ax, yl, offset_y, xl, offset_x)
 
     ax.Units = 'normalized';  % Use relative positioning
     
-    % Offset Y label (move further left)
-    yl.Units = 'normalized';
-    yl.Position(1) = yl.Position(1) - offset;
+    if offset_y ~= 0
+        % Offset Y label (move further left)
+        yl.Units = 'normalized';
+        yl.Position(1) = yl.Position(1) - offset_y;
+    end
     
-    % Offset X label (move lower)
-    xl.Units = 'normalized';
-    xl.Position(2) = xl.Position(2) - offset;
+    if offset_x ~= 0
+        % Offset X label (move lower)
+        xl.Units = 'normalized';
+        xl.Position(2) = xl.Position(2) - offset_x;
+    end
 end
